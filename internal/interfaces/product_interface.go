@@ -1,4 +1,4 @@
-package services
+package interfaces
 
 import (
 	"github.com/sad-cat-cmd/WebApi/internal/models"
