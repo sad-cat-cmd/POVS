@@ -9,6 +9,7 @@ import (
 	"github.com/sad-cat-cmd/WebApi/internal/services"
 )
 
+// аналог ProductController
 type ProductHandler struct {
 	service services.IProductService
 }

@@ -5,12 +5,25 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sad-cat-cmd/WebApi/cmd/WebApi/handlers"
+	"github.com/sad-cat-cmd/WebApi/internal/config"
+	"github.com/sad-cat-cmd/WebApi/internal/handlers"
 	"github.com/sad-cat-cmd/WebApi/internal/services"
 )
 
+var pathConfigFile string = "config.json"
+
 func main() {
-	services := services.NewProductServices()
+	configuration, err := config.NewConfiguration(pathConfigFile)
+	if err != nil {
+		fmt.Println("Error starting server: \n\tuncorrectness read config file: %w", err.Error())
+		return
+	}
+
+	services, err := services.NewProductService(configuration)
+	if err != nil {
+		fmt.Println("Error starting server: \n\t ", err.Error())
+		return
+	}
 	productHandler := handlers.NewProductHandler(services)
 
 	http.HandleFunc("GET /products", productHandler.GetAllHandler)

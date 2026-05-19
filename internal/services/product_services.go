@@ -1,23 +1,82 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/sad-cat-cmd/WebApi/internal/config"
 	"github.com/sad-cat-cmd/WebApi/internal/models"
 )
 
 type ProductService struct {
+	cfg      *config.Configuration
 	mutex    sync.Mutex
 	products map[string]*models.Product
 }
 
-func NewProductServices() *ProductService {
-	return &ProductService{
-		products: make(map[string]*models.Product),
+func (s *ProductService) writeProductsInFile() error {
+	productsList := make([]*models.Product,
+		0,
+		len(s.products))
+	for _, p := range s.products {
+		productsList = append(productsList, p)
 	}
+
+	data, err := json.MarshalIndent(productsList, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(s.cfg.DataBaseFilePath,
+		data,
+		0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ProductService) initProductsFromFile() error {
+	filePath := s.cfg.DataBaseFilePath
+	if filePath == "" {
+		return errors.New("Error: file path is empty string")
+	}
+	_, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	var pdoductList []*models.Product
+	err = json.Unmarshal(data, &pdoductList)
+	if err != nil {
+		return err
+	}
+	s.mutex.Lock()
+	for _, product := range pdoductList {
+		s.products[product.ID] = product
+	}
+
+	s.mutex.Unlock()
+	return nil
+}
+
+func NewProductService(c *config.Configuration) (*ProductService, error) {
+	thisProductService := ProductService{
+		products: make(map[string]*models.Product),
+		cfg:      c,
+	}
+	err := thisProductService.initProductsFromFile()
+	if err != nil {
+		return nil, err
+	}
+
+	return &thisProductService, nil
 }
 func (s *ProductService) Add(product *models.Product) (*models.Product, error) {
 	s.mutex.Lock()
@@ -25,6 +84,10 @@ func (s *ProductService) Add(product *models.Product) (*models.Product, error) {
 		product.ID = generateUUID()
 	}
 	s.products[product.ID] = product
+	err := s.writeProductsInFile()
+	if err != nil {
+		fmt.Println("Error with working service:\n\t", err.Error())
+	}
 	s.mutex.Unlock()
 	return product, nil
 }
@@ -37,6 +100,7 @@ func (s *ProductService) Remove(id string) (*models.Product, error) {
 		return nil, errors.New("Error with remove : object don't exist")
 	}
 	delete(s.products, id)
+	s.writeProductsInFile()
 	s.mutex.Unlock()
 	return product, nil
 }
@@ -55,13 +119,13 @@ func (s *ProductService) Edit(new_product *models.Product) (*models.Product, err
 	product.Price = new_product.Price
 	product.UpdatedAt = time.Now()
 
+	s.writeProductsInFile()
 	s.mutex.Unlock()
 	return product, nil
 }
 func (s *ProductService) Search(id string) (*models.Product, error) {
 	s.mutex.Lock()
 	product, exist := s.products[id]
-
 	if !exist {
 		s.mutex.Unlock()
 		return nil, nil
