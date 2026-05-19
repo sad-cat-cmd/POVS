@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sad-cat-cmd/WebApi/internal/interfaces"
 	"github.com/sad-cat-cmd/WebApi/internal/models"
-	"github.com/sad-cat-cmd/WebApi/internal/services"
 )
 
 type ProductHandler struct {
-	service services.IProductService
+	service interfaces.IProductService
 }
 
-func NewProductHandler(serv services.IProductService) *ProductHandler {
+func NewProductHandler(serv interfaces.IProductService) *ProductHandler {
 	return &ProductHandler{service: serv}
 }
 
