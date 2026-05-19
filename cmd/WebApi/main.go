@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sad-cat-cmd/WebApi/cmd/WebApi/handlers"
+	"github.com/sad-cat-cmd/WebApi/internal/handlers"
 	"github.com/sad-cat-cmd/WebApi/internal/services"
 )
 
