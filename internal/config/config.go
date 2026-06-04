@@ -10,14 +10,14 @@ type Configuration struct {
 }
 
 func NewConfiguration(pathConfigFile string) (*Configuration, error) {
-	data, error := os.ReadFile(pathConfigFile)
-	if error != nil {
-		return nil, error
+	data, err := os.ReadFile(pathConfigFile)
+	if err != nil {
+		return nil, err
 	}
 	var config Configuration
-	error = json.Unmarshal(data, &config)
-	if error != nil {
-		return nil, error
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		return nil, err
 	}
 	return &config, nil
 }

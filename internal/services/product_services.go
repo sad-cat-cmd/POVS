@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -42,7 +41,7 @@ func (s *ProductService) writeProductsInFile() error {
 func (s *ProductService) initProductsFromFile() error {
 	filePath := s.cfg.DataBaseFilePath
 	if filePath == "" {
-		return errors.New("Error: file path is empty string")
+		return errors.New("Error: file config path is empty string")
 	}
 	_, err := os.Stat(filePath)
 	if err != nil {
@@ -80,13 +79,10 @@ func NewProductService(c *config.Configuration) (*ProductService, error) {
 }
 func (s *ProductService) Add(product *models.Product) (*models.Product, error) {
 	s.mutex.Lock()
-	if product.ID == "" {
-		product.ID = generateUUID()
-	}
 	s.products[product.ID] = product
-	err := s.writeProductsInFile()
-	if err != nil {
-		fmt.Println("Error with working service:\n\t", err.Error())
+	errWriteData := s.writeProductsInFile()
+	if errWriteData != nil {
+		return nil, errors.New("Error write data")
 	}
 	s.mutex.Unlock()
 	return product, nil
@@ -97,10 +93,13 @@ func (s *ProductService) Remove(id string) (*models.Product, error) {
 
 	if !exist {
 		s.mutex.Unlock()
-		return nil, errors.New("Error with remove : object don't exist")
+		return nil, errors.New("Object doesn't exist")
 	}
 	delete(s.products, id)
-	s.writeProductsInFile()
+	errWriteData := s.writeProductsInFile()
+	if errWriteData != nil {
+		return nil, errors.New("Error write data")
+	}
 	s.mutex.Unlock()
 	return product, nil
 }
@@ -110,7 +109,7 @@ func (s *ProductService) Edit(new_product *models.Product) (*models.Product, err
 
 	if !exist {
 		s.mutex.Unlock()
-		return nil, errors.New("Error with edit : object don't exist")
+		return nil, errors.New("object doesn't exist")
 	}
 	product.Name = new_product.Name
 	product.ID = new_product.ID
@@ -119,7 +118,10 @@ func (s *ProductService) Edit(new_product *models.Product) (*models.Product, err
 	product.Price = new_product.Price
 	product.UpdatedAt = time.Now()
 
-	s.writeProductsInFile()
+	errWrite := s.writeProductsInFile()
+	if errWrite != nil {
+		return nil, errors.New("Error write data")
+	}
 	s.mutex.Unlock()
 	return product, nil
 }
@@ -128,7 +130,7 @@ func (s *ProductService) Search(id string) (*models.Product, error) {
 	product, exist := s.products[id]
 	if !exist {
 		s.mutex.Unlock()
-		return nil, nil
+		return nil, errors.New("Product not found")
 	}
 
 	s.mutex.Unlock()
@@ -145,6 +147,7 @@ func (s *ProductService) GetAll() ([]*models.Product, error) {
 	s.mutex.Unlock()
 	return result, nil
 }
-func generateUUID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
-}
+
+// func generateUUID() string {
+// 	return fmt.Sprintf("%d", time.Now().UnixNano())
+// }

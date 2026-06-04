@@ -9,10 +9,8 @@ import (
 	"github.com/sad-cat-cmd/WebApi/internal/models"
 )
 
-// аналог ProductController
 type ProductHandler struct {
-	service1 interfaces.IProductService
-	service  interfaces.IProductService
+	service interfaces.IProductService
 }
 
 func NewProductHandler(serv interfaces.IProductService) *ProductHandler {
@@ -30,16 +28,23 @@ func (h *ProductHandler) AddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	new_product := models.NewProduct(
+	new_product, errCreateProduct := models.NewProduct(
 		req_product.Name,
 		req_product.Definition,
 		req_product.Price,
 		req_product.Image,
 	)
-
+	if errCreateProduct != nil {
+		http.Error(w, "Invalid request data", http.StatusBadRequest)
+		return
+	}
 	created, err := h.service.Add(new_product)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if err.Error() == "Error write data" {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -57,7 +62,15 @@ func (h *ProductHandler) RemoveHandler(w http.ResponseWriter, r *http.Request) {
 	removed, err := h.service.Remove(id)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if err.Error() == "Object doesn't exist" {
+			http.Error(w, "Resource not found", http.StatusNotFound)
+			return
+		}
+		if err.Error() == "Error write data" {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -79,10 +92,26 @@ func (h *ProductHandler) EditHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	product.ID = id
-
-	updated, err := h.service.Edit(&product)
+	newProduct, errNewProduct := models.NewProduct(product.Name,
+		product.Definition,
+		product.Price,
+		product.Image)
+	if errNewProduct != nil {
+		http.Error(w, "Invalid request data", http.StatusBadRequest)
+		return
+	}
+	newProduct.ID = id
+	updated, err := h.service.Edit(newProduct)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if err.Error() == "object doesn't exist" {
+			http.Error(w, "Resource not found", http.StatusNotFound)
+			return
+		}
+		if err.Error() == "Error write data" {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -94,16 +123,12 @@ func (h *ProductHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/products/")
 
 	if id == "" {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "ID required", http.StatusBadRequest)
 		return
 	}
 	product, err := h.service.Search(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if product == nil {
-		http.Error(w, "Product not found", http.StatusNotFound)
+		http.Error(w, "Resource not found", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -114,7 +139,7 @@ func (h *ProductHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 func (h *ProductHandler) GetAllHandler(w http.ResponseWriter, r *http.Request) {
 	products, err := h.service.GetAll()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
