@@ -6,7 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
+
+	//"os"
 	"path/filepath"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 	//"github.com/sad-cat-cmd/WebApi/internal/handlers"
 	"github.com/sad-cat-cmd/WebApi/internal/models"
-	"github.com/sad-cat-cmd/WebApi/internal/services"
+	"github.com/sad-cat-cmd/WebApi/internal/services/data"
 )
 
 type stubProductService struct {
@@ -92,17 +93,18 @@ func (m *mockProductService) Remove(id string) (*models.Product, error) {
 func TestProductHandler_Integration(t *testing.T) {
 	tempDir := t.TempDir()
 
-	dbPath := filepath.Join(tempDir, "test_products.json")
-	err := os.WriteFile(dbPath, []byte("[]"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create dataBase")
+	dbPath := filepath.Join(tempDir, "test_products.db")
+
+	cfg := &config.Configuration{
+		DataBaseFilePath: dbPath,
 	}
-	cfg := &config.Configuration{DataBaseFilePath: dbPath}
-	realService, err := services.NewProductService(cfg)
+
+	realService, err := data.NewProductServiceSQLlite(cfg)
 	if err != nil {
-		t.Fatalf("Failed to create Service: %q", err.Error())
-		return
+		t.Fatalf("Failed to create SQLite service: %v", err)
 	}
+	defer realService.CloseDB()
+
 	handler := NewProductHandler(realService)
 	var created_Product1 models.Product
 	t.Run("#1-test-AddHandler-POST-request(correctness_product)", func(t *testing.T) {
@@ -506,7 +508,7 @@ func TestProductHandler_Stub_Request(t *testing.T) {
 	t.Run("#6-test-SearchHandlerStub-With-Found-Error", func(t *testing.T) {
 		stub := &stubProductService{
 			searchResult: nil,
-			searchError:  errors.New("Product not found"),
+			searchError:  errors.New("object doesn't exist"),
 		}
 		handler := NewProductHandler(stub)
 
