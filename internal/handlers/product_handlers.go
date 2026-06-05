@@ -128,11 +128,7 @@ func (h *ProductHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	product, err := h.service.Search(id)
 	if err != nil {
-		if err.Error() == "object doesn't exist" {
-			http.Error(w, "Resource not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Resource not found", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

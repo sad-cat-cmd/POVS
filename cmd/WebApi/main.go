@@ -7,9 +7,7 @@ import (
 
 	"github.com/sad-cat-cmd/WebApi/internal/config"
 	"github.com/sad-cat-cmd/WebApi/internal/handlers"
-
-	//"github.com/sad-cat-cmd/WebApi/internal/services"
-	"github.com/sad-cat-cmd/WebApi/internal/services/data"
+	"github.com/sad-cat-cmd/WebApi/internal/services"
 )
 
 var pathConfigFile string = "config.json"
@@ -17,17 +15,16 @@ var pathConfigFile string = "config.json"
 func main() {
 	configuration, err := config.NewConfiguration(pathConfigFile)
 	if err != nil {
-		fmt.Printf("Error starting server: failed to read config file: %v\n", err)
+		fmt.Println("Error starting server: \n\tuncorrectness read config file: %w", err.Error())
 		return
 	}
 
-	service, err := data.NewProductServiceSQLlite(configuration)
+	services, err := services.NewProductService(configuration)
 	if err != nil {
 		fmt.Println("Error starting server: \n\t ", err.Error())
 		return
 	}
-	defer service.CloseDB()
-	productHandler := handlers.NewProductHandler(service)
+	productHandler := handlers.NewProductHandler(services)
 
 	http.HandleFunc("GET /products", productHandler.GetAllHandler)
 	http.HandleFunc("GET /products/", productHandler.SearchHandler)
